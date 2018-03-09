@@ -53,4 +53,9 @@ public class ThresholdRoIs extends AbstractRoIMining {
         return rois;
     }
 
+    @Override
+    public String toString(){
+        return "Threshold";
+    }
+
 }

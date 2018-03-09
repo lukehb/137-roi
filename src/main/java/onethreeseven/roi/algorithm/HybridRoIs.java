@@ -52,4 +52,10 @@ public class HybridRoIs extends UniformRoIs {
     protected void unprocessGrid(RoIMiningSpace grid, Collection<RoI> rois) {
         //do nothing
     }
+
+    @Override
+    public String toString(){
+        return "Hybrid";
+    }
+
 }

@@ -71,4 +71,10 @@ public class UniformRoIs extends AbstractRoIMining {
         }
         return mostDense;
     }
+
+    @Override
+    public String toString(){
+        return "Uniform";
+    }
+
 }

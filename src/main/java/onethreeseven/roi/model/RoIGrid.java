@@ -181,4 +181,17 @@ public class RoIGrid extends Grid implements RoIMiningSpace {
         return possibleEntityIds.size();
     }
 
+    @Override
+    public String toString(){
+        StringBuilder str = new StringBuilder("RoI Grid(");
+        for (int i = 0; i < nCellsPerDimension.length; i++) {
+            str.append(String.valueOf(nCellsPerDimension[i]));
+            if(i != nCellsPerDimension.length - 1){
+                str.append("x");
+            }
+        }
+        str.append(")");
+        return str.toString();
+    }
+
 }

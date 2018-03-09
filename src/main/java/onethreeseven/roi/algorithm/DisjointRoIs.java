@@ -29,4 +29,9 @@ public class DisjointRoIs extends UniformRoIs {
         }
     }
 
+    @Override
+    public String toString(){
+        return "Disjoint";
+    }
+
 }

@@ -10,7 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Given an RoI and the grid it is resolve this class extracts the actual coordinates for the grid cell-based RoI.
+ * Given an RoI and the grid used to mine it, this class extracts the actual coordinates for the grid cell-based RoI.
  * @author Luke Bermingham
  */
 public class RectangularRoI extends HashMap<Integer, BoundingCoordinates> implements BoundingCoordinates {
@@ -19,14 +19,20 @@ public class RectangularRoI extends HashMap<Integer, BoundingCoordinates> implem
     private final double density;
     private double[][] bounds = null;
     private final AbstractGeographicProjection projection;
+    private final int id;
 
     public RectangularRoI(RoIGrid roIGrid, RoI roi, AbstractGeographicProjection projection) {
         this.roIGrid = roIGrid;
         this.density = roi.getDensity() / roi.size();
         this.projection = projection;
+        this.id = roi.getId();
         for (Integer cellIdx : roi) {
             this.put(cellIdx, roIGrid.getCellBounds(cellIdx));
         }
+    }
+
+    public int getId() {
+        return id;
     }
 
     public RoIGrid getRoIGrid() {
@@ -70,5 +76,10 @@ public class RectangularRoI extends HashMap<Integer, BoundingCoordinates> implem
 
     public double getDensity() {
         return density;
+    }
+
+    @Override
+    public String toString() {
+        return id + " (density = " + (int)density + ")";
     }
 }

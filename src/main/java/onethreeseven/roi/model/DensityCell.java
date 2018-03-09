@@ -44,7 +44,17 @@ public class DensityCell extends IndexedCell {
         densityMap.clear();
     }
 
+    /**
+     * @return The number of unique visits to this cell, i.e each entity's visit only counts once
+     */
     public int getDensity() {
+        return densityMap.size();
+    }
+
+    /**
+     * @return The total number of visits (even by the same entity).
+     */
+    public int getTotalDensity(){
         return totalDensity;
     }
 

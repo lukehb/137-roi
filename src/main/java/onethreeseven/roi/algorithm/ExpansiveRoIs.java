@@ -58,4 +58,10 @@ public class ExpansiveRoIs extends DisjointRoIs {
         neighbourCandidates.remove(miningCell.getIndex());
         return miningCell;
     }
+
+    @Override
+    public String toString(){
+        return "Expansive";
+    }
+
 }

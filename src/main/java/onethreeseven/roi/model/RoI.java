@@ -37,12 +37,15 @@ public class RoI implements Iterable<Integer> {
 
     public void add(RoI roi) {
         cells.addAll(roi.cells);
-        density += roi.getDensity();
+        density = roi.getDensity();
     }
 
     public void add(DensityCell cell) {
-        cells.add(cell.getIndex());
-        this.density += cell.getDensity();
+        boolean added = cells.add(cell.getIndex());
+        if(added){
+            this.density += cell.getDensity();
+        }
+
     }
 
     public void clear() {

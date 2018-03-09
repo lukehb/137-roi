@@ -5,6 +5,7 @@ import onethreeseven.roi.model.RoI;
 import onethreeseven.roi.model.RoIMiningSpace;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.function.Consumer;
 
 /**
  * The general mining algorithm that is the base class for all region of interest (RoI) mining algorithms.
@@ -19,6 +20,11 @@ import java.util.Collection;
  */
 public abstract class AbstractRoIMining {
 
+    protected Consumer<Double> progressReporter = null;
+
+    public void setProgressReporter(Consumer<Double> progressReporter) {
+        this.progressReporter = progressReporter;
+    }
 
     /**
      * Judges the neighbour cell against the current cell we are on, and determines whether the neighbour
@@ -48,6 +54,7 @@ public abstract class AbstractRoIMining {
         int seedId = 0;
 
         //RoI mining
+        int i = 0;
         for (MiningCell seedCell : denseCells) {
             int seedCellTally = seedCell.getDensity();
             //this cell has the required density and is not processed
@@ -67,6 +74,12 @@ public abstract class AbstractRoIMining {
             } else {
                 //mark as processed don't consider it again
                 seedCell.markProcessed();
+            }
+
+            i++;
+            if(progressReporter != null){
+                double progress = (double)i / denseCells.size();
+                progressReporter.accept(progress);
             }
         }
 

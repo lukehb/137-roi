@@ -54,4 +54,10 @@ public class SlopeRoIs extends AbstractRoIMining {
         }
         return currentCell;
     }
+
+    @Override
+    public String toString(){
+        return "Slope";
+    }
+
 }
