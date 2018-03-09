@@ -90,11 +90,7 @@ public abstract class AbstractRoIMining {
     }
 
     protected void unprocessGrid(RoIMiningSpace grid, Collection<RoI> rois){
-        for (RoI roi : rois) {
-            for (Integer cellIdx : roi) {
-                grid.getCell(cellIdx).markUnprocessed();
-            }
-        }
+        grid.unprocessAll();
     }
 
     private void expandRoI(RoIMiningSpace roIMiningSpace, RoI currentRoI, MiningCell seedCell, int minDensity) {

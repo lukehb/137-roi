@@ -80,6 +80,13 @@ public class RoIGrid extends Grid implements RoIMiningSpace {
     }
 
     @Override
+    public void unprocessAll() {
+        for (RoIGridCell cell : gridCells.values()) {
+            cell.markUnprocessed();
+        }
+    }
+
+    @Override
     public Collection<? extends MiningCell> getDenseCells() {
         //get the dense cells (but only unprocessed ones)
         List<? extends MiningCell> unprocessedCells = gridCells.values().stream()

@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Map;
-import java.util.logging.Logger;
 
 /**
  * Testing mining spaces and their cell density.
@@ -33,11 +32,11 @@ public class MiningSpaceFactoryTest {
 
         Collection<? extends MiningCell> denseCells = roIGrid.getDenseCells();
 
-        Logger logger = Logger.getLogger(this.getClass().getName());
+
         int previousDensity = Integer.MAX_VALUE;
         for (MiningCell gridCell : denseCells) {
             int density = gridCell.getDensity();
-            logger.info("Density:" + density);
+            System.out.println("Density:" + density);
             Assert.assertTrue(density <= previousDensity);
             previousDensity = density;
         }
@@ -70,12 +69,11 @@ public class MiningSpaceFactoryTest {
         //expected ids
         String[] expectedIds = trajectories.keySet().toArray(new String[nTrajectories]);
 
-        Logger logger = Logger.getLogger(this.getClass().getName());
         for (MiningCell denseCell : grid.getDenseCells()) {
             Assert.assertTrue(expectedIndices.get(denseCell.getIndex()));
             Assert.assertTrue(denseCell.getDensity() == nTrajectories);
             Assert.assertTrue(denseCell.containsAll(expectedIds));
-            logger.info(denseCell.toString());
+            System.out.println(denseCell.toString());
         }
 
 

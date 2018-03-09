@@ -24,11 +24,15 @@ import java.util.Set;
  */
 public class RoIGraphic extends GraphicsPayload {
 
-    public RoIGraphic(RectangularRoI rectangularRoI) {
+    public RoIGraphic(){
+        super();
+    }
+
+    public RoIGraphic(RectangularRoI rectangularRoI, int minObservedDensity, int maxObservedDensity) {
         super();
         //set heat map color
-        double max = rectangularRoI.getRoIGrid().getMaxPossibleDensity();
-        Color heat = ColorUtil.generateHeatMapColor(0, max, rectangularRoI.getDensity());
+        Color heat = ColorUtil.generateHeatMapColor(minObservedDensity, maxObservedDensity, (int)rectangularRoI.getDensity());
+        heat = new Color(heat.getRed(), heat.getGreen(), heat.getBlue(), 128);
         this.fallbackColor.setValue(heat);
     }
 

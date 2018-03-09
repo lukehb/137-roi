@@ -29,7 +29,7 @@ dependencies {
     compile group: 'onethreeseven', name: 'jclimod', version: '0.0.1-SNAPSHOT'
 
     //geo
-    compile group: 'onethreeseven', name: 'geo', version: '0.0.4'
+    compile (group: 'onethreeseven', name: 'geo', version: '0.0.4-SNAPSHOT') {force=true}
 
     //data-structures
     compile (group: 'onethreeseven', name: 'datastructures', version: '0.0.4-SNAPSHOT') {force = true}

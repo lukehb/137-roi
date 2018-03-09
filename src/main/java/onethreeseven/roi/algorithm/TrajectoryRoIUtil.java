@@ -22,6 +22,9 @@ public final class TrajectoryRoIUtil {
 
     /**
      * Converts a trajectory to a series of RoI id visitations.
+     * @param trajectory trajectory
+     * @param rois rois
+     * @param roIGrid the roi grid
      * @return An int[] of RoI ids that were visited by this trajectory.
      */
     public static int[] fromTrajToRoISequence(ITrajectory trajectory, Collection<RoI> rois, RoIGrid roIGrid) {

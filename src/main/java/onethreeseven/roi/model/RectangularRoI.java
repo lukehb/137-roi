@@ -41,12 +41,19 @@ public class RectangularRoI extends HashMap<Integer, BoundingCoordinates> implem
 
     @Override
     public Iterator<double[]> geoCoordinateIter() {
-        final double[][] corners = BoundsUtil.getCorners(getBounds());
-        for (int i = 0; i < corners.length; i++) {
-            corners[i] = projection.cartesianToGeographic(corners[i]);
-        }
-        final List<double[]> cornerList = Arrays.asList(corners);
-        return cornerList.iterator();
+        return new Iterator<>() {
+            final Iterator<double[]> cartesianIter = coordinateIter();
+            @Override
+            public boolean hasNext() {
+                return cartesianIter.hasNext();
+            }
+
+            @Override
+            public double[] next() {
+                double[] cartCoord = cartesianIter.next();
+                return projection.cartesianToGeographic(cartCoord);
+            }
+        };
     }
 
     @Override
@@ -71,7 +78,7 @@ public class RectangularRoI extends HashMap<Integer, BoundingCoordinates> implem
         double[] maxXY = new double[]{cartesianBounds[0][1], cartesianBounds[1][1]};
         double[] minLatLon = projection.cartesianToGeographic(minXY);
         double[] maxLatLon = projection.cartesianToGeographic(maxXY);
-        return new LatLonBounds(minLatLon[0], minLatLon[1], maxLatLon[0], maxLatLon[1]);
+        return new LatLonBounds(minLatLon[0], maxLatLon[0], minLatLon[1], maxLatLon[1]);
     }
 
     public double getDensity() {

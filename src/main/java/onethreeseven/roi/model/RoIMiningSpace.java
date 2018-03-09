@@ -11,6 +11,11 @@ import java.util.Collection;
 public interface RoIMiningSpace {
 
     /**
+     * Set all cells in grid to be unprocessed (i.e. reset for mining again).
+     */
+    void unprocessAll();
+
+    /**
      * @return The dense cells the trajectory passed through.
      * In this context dense means, number of trajectories passing through.
      * In order of most dense to least dense.

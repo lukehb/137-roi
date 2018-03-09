@@ -14,7 +14,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 /**
  * Testing the Threshold RoIs algorithm.
@@ -48,10 +47,8 @@ public class ThresholdRoIsTest {
         Assert.assertTrue(!rois.isEmpty());
         RoI bigRoI = rois.iterator().next();
 
-        Logger logger = Logger.getLogger(this.getClass().getName());
-
         for (int expectedIndice : expectedIndices) {
-            logger.info("Checking if threshold roi contained cell idx: " + expectedIndice);
+            System.out.println("Checking if threshold roi contained cell idx: " + expectedIndice);
             boolean contains = bigRoI.contains(expectedIndice);
             Assert.assertTrue("RoI did not contain!", contains);
         }

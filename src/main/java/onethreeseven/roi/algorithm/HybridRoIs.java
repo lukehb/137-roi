@@ -34,6 +34,7 @@ public class HybridRoIs extends UniformRoIs {
         //new rois found using slope go here
         Collection<RoI> slopeRoIs = new ArrayList<>();
 
+        int i = 0;
         for (RoI uniformRoI : uniformRoIs) {
             //mark cell indices as unprocessed, so slope will refine these cells
             for (Integer cellIdx : uniformRoI) {
@@ -41,16 +42,18 @@ public class HybridRoIs extends UniformRoIs {
             }
             //add the new rois
             slopeRoIs.addAll(slopeAlgo.run(roIMiningSpace, minDensity));
+
+            i++;
+            if(progressReporter != null){
+                double progress = (double)i / uniformRoIs.size();
+                progressReporter.accept(progress);
+            }
+
         }
 
-        HybridRoIs.super.unprocessGrid(roIMiningSpace, slopeRoIs);
+        unprocessGrid(roIMiningSpace, slopeRoIs);
 
         return slopeRoIs;
-    }
-
-    @Override
-    protected void unprocessGrid(RoIMiningSpace grid, Collection<RoI> rois) {
-        //do nothing
     }
 
     @Override

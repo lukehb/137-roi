@@ -8,15 +8,20 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.*;
+import javafx.scene.control.Label;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
+import onethreeseven.common.util.ColorUtil;
 import onethreeseven.datastructures.model.ITrajectory;
 import onethreeseven.datastructures.model.SpatioCompositeTrajectory;
+import onethreeseven.geo.model.LatLonBounds;
 import onethreeseven.geo.projection.AbstractGeographicProjection;
 import onethreeseven.roi.algorithm.*;
 import onethreeseven.roi.graphics.RoIGraphic;
 import onethreeseven.roi.model.*;
+import onethreeseven.trajsuitePlugin.graphics.LabelPrefab;
 import onethreeseven.trajsuitePlugin.model.BaseTrajSuiteProgram;
 import onethreeseven.trajsuitePlugin.model.EntitySupplier;
 import onethreeseven.trajsuitePlugin.model.WrappedEntity;
@@ -24,19 +29,13 @@ import onethreeseven.trajsuitePlugin.transaction.AddEntitiesTransaction;
 import onethreeseven.trajsuitePlugin.transaction.RemoveEntitiesTransaction;
 import onethreeseven.trajsuitePlugin.util.BoundsUtil;
 import onethreeseven.trajsuitePlugin.util.IdGenerator;
-import onethreeseven.trajsuitePlugin.view.EntitySelector;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.ServiceLoader;
+import java.awt.*;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Controller for RoI view fxml
@@ -351,14 +350,42 @@ public class RoIViewController {
         //handle geographic rois
         else{
             if(space instanceof RoIGrid){
-                AddEntitiesTransaction transaction = new AddEntitiesTransaction();
-                RoIGrid grid = (RoIGrid) space;
-                String layername = "RoIs_" + IdGenerator.nextId();
 
+                RoIGrid grid = (RoIGrid) space;
+
+                //get min and max density
+                int maxDensity = Integer.MIN_VALUE;
+
+                //make the rect rois and observe min/max density in the dataset
+                RectangularRoI[] rectRoIs = new RectangularRoI[rois.size()];
+                int i = 0;
                 for (RoI roi : rois) {
                     RectangularRoI rectangularRoI = new RectangularRoI(grid, roi, projection);
+                    rectRoIs[i] = rectangularRoI;
+
+                    //look for observed min/max density
+                    int density = (int) rectangularRoI.getDensity();
+                    if(density > maxDensity){
+                        maxDensity = density;
+                    }
+
+                    i++;
+                }
+
+                //add the rect rois to transaction
+                AddEntitiesTransaction transaction = new AddEntitiesTransaction();
+                String layername = "RoIs_" + IdGenerator.nextId();
+
+                for (RectangularRoI rectangularRoI : rectRoIs) {
                     String roiId = String.valueOf(rectangularRoI.getId());
-                    transaction.add(layername, roiId, rectangularRoI, new RoIGraphic(rectangularRoI));
+                    RoIGraphic graphic = new RoIGraphic(rectangularRoI, 0, maxDensity);
+
+                    double[] centreLatLon = rectangularRoI.getLatLonBounds().getLatLonCentroid();
+
+                    LabelPrefab labelPrefab = new LabelPrefab(rectangularRoI.toString(), true, centreLatLon);
+
+                    graphic.additionalPrefabs.add(labelPrefab);
+                    transaction.add(layername, roiId, rectangularRoI, graphic);
                 }
 
                 BaseTrajSuiteProgram.getInstance().getLayers().process(transaction);

@@ -7,7 +7,6 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.logging.Logger;
 
 /**
  * Testing the grid and working with its cell indices.
@@ -17,7 +16,7 @@ import java.util.logging.Logger;
 public class GridTest {
 
     @Test
-    public void testGetIndicesBetween() throws Exception {
+    public void testGetIndicesBetween() {
 
         int min = 0;
         int max = 10;
@@ -38,7 +37,7 @@ public class GridTest {
     }
 
     @Test
-    public void testGetIndicesAround() throws Exception {
+    public void testGetIndicesAround() {
         Grid grid = new Grid(new int[]{3, 3, 3},
                 new double[][]{
                         new double[]{-10, 10},
@@ -58,7 +57,7 @@ public class GridTest {
     }
 
     @Test
-    public void testGetIndicesAroundCorner() throws Exception {
+    public void testGetIndicesAroundCorner() {
         int[] extents = new int[]{3, 3, 3};
         Grid grid = new Grid(extents,
                 new double[][]{
@@ -80,9 +79,8 @@ public class GridTest {
         expectedIndices1d.add(NDUtil.flattenIndices(new int[]{1, 0, 1}, extents));
         expectedIndices1d.add(NDUtil.flattenIndices(new int[]{0, 1, 1}, extents));
 
-        Logger logger = Logger.getLogger(this.getClass().getName());
         for (int idx : indiciesAround1d) {
-            logger.info("Checking for idx: " + Arrays.toString(NDUtil.inflateIndex(idx, extents)));
+            System.out.println("Checking for idx: " + Arrays.toString(NDUtil.inflateIndex(idx, extents)));
             Assert.assertTrue(expectedIndices1d.contains(idx));
         }
 
