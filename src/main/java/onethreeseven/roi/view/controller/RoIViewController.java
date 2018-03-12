@@ -8,34 +8,37 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.control.*;
-import javafx.scene.control.Label;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
-import onethreeseven.common.util.ColorUtil;
+import onethreeseven.common.util.FileUtil;
 import onethreeseven.datastructures.model.ITrajectory;
 import onethreeseven.datastructures.model.SpatioCompositeTrajectory;
-import onethreeseven.geo.model.LatLonBounds;
 import onethreeseven.geo.projection.AbstractGeographicProjection;
 import onethreeseven.roi.algorithm.*;
 import onethreeseven.roi.graphics.RoIGraphic;
 import onethreeseven.roi.model.*;
+import onethreeseven.spm.algorithm.*;
+import onethreeseven.spm.data.SPMFParser;
+import onethreeseven.spm.model.SequentialPattern;
 import onethreeseven.trajsuitePlugin.graphics.LabelPrefab;
 import onethreeseven.trajsuitePlugin.model.BaseTrajSuiteProgram;
 import onethreeseven.trajsuitePlugin.model.EntitySupplier;
+import onethreeseven.trajsuitePlugin.model.TransactionProcessor;
 import onethreeseven.trajsuitePlugin.model.WrappedEntity;
 import onethreeseven.trajsuitePlugin.transaction.AddEntitiesTransaction;
 import onethreeseven.trajsuitePlugin.transaction.RemoveEntitiesTransaction;
 import onethreeseven.trajsuitePlugin.util.BoundsUtil;
 import onethreeseven.trajsuitePlugin.util.IdGenerator;
-import java.awt.*;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Controller for RoI view fxml
@@ -43,26 +46,51 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class RoIViewController {
 
+    //making grid pane
     @FXML
     public Label nSelectedTrajsLabel;
     @FXML
     public Button makeGridBtn;
     @FXML
     public Spinner<Integer> cellSizeSpinner;
+
+    //roi pane
+    @FXML
+    public TitledPane roisPane;
+    @FXML
+    public CheckBox mineSPMCheckbox;
     @FXML
     public ChoiceBox<WrappedEntity<RoIMiningSpace>> miningSpaceChoiceBox;
-    @FXML
-    public Label roiWarningLabel;
     @FXML
     public ChoiceBox<AbstractRoIMining> roiAlgorithmChoiceBox;
     @FXML
     public Spinner<Integer> minimumDensitySpinner;
+
+    //spm pane
+    @FXML
+    public TitledPane spmPane;
+    @FXML
+    public Spinner<Integer> minsupSpinner;
+    @FXML
+    public Label spmParamLabel;
+    @FXML
+    public Spinner<Integer> spmParamSpinner;
+    @FXML
+    public ChoiceBox<SPMAlgorithm> spmAlgoChoiceBox;
+
+    //feedback label
+    @FXML
+    public Label feedbackLabel;
+
+    //Bottom bar
     @FXML
     public ProgressBar progressBar;
     @FXML
     public Button mineRoIsBtn;
 
     private final Map<String, ITrajectory> selectedTrajs;
+
+
 
     public RoIViewController(){
 
@@ -171,7 +199,7 @@ public class RoIViewController {
 
         //there is no grid
         if(!hasGrid){
-            roiWarningLabel.setText("Please make a grid for RoI mining.");
+            feedbackLabel.setText("Please make a grid for RoI mining.");
             miningSpaceChoiceBox.setDisable(true);
             minimumDensitySpinner.setDisable(true);
             roiAlgorithmChoiceBox.setDisable(true);
@@ -182,16 +210,15 @@ public class RoIViewController {
             cellSizeSpinner.setDisable(false);
             makeGridBtn.setDisable(false);
         }
-        //no trajs
         else{
-            cellSizeSpinner.setDisable(true);
-            roiWarningLabel.setText("Please select some trajectories to mine RoIs from.");
-            makeGridBtn.setDisable(true);
+            feedbackLabel.setText("Please select some trajectories to mine RoIs from.");
         }
 
         if(hasTrajs && hasGrid){
+            //activate roi pane
+            roisPane.setDisable(false);
             miningSpaceChoiceBox.setDisable(false);
-            roiWarningLabel.setText("");
+            feedbackLabel.setText("");
             roiAlgorithmChoiceBox.setDisable(false);
             mineRoIsBtn.setDisable(false);
             //setup min density spinner
@@ -199,6 +226,10 @@ public class RoIViewController {
             minimumDensitySpinner.setDisable(false);
             minimumDensitySpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, numSelectedTrajs, 1));
             minimumDensitySpinner.getValueFactory().setValue((int) (numSelectedTrajs * 0.5));
+        }
+        else{
+            roisPane.setDisable(true);
+            mineSPMCheckbox.setSelected(false);
         }
 
 
@@ -228,6 +259,38 @@ public class RoIViewController {
         roiAlgorithmChoiceBox.getItems().addAll(roiAlgs);
         roiAlgorithmChoiceBox.getSelectionModel().selectFirst();
 
+        //bind the disabled property to the checkbox selection
+        spmPane.disableProperty().bind(mineSPMCheckbox.selectedProperty().not());
+
+        //spm algo choice box
+        spmAlgoChoiceBox.getItems().addAll(
+                new ACSpan(),
+                new CCSpan(),
+                new MCSpan(),
+                new DCSpan()
+        );
+
+        //setup min sup
+        minsupSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100000, 100));
+
+        //setup spm param spinner
+        spmAlgoChoiceBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if(newValue instanceof DCSpan){
+                spmParamLabel.setText("Maximum redundancy (%):");
+                spmParamSpinner.setDisable(false);
+                spmParamSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 100, 50));
+                minsupSpinner.setDisable(false);
+            }
+            else{
+                spmParamLabel.setText("Other parameter:");
+                spmParamSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1,100, 1));
+                spmParamSpinner.setDisable(true);
+                minsupSpinner.setDisable(false);
+            }
+        });
+
+        spmAlgoChoiceBox.getSelectionModel().selectFirst();
+
         refreshSelectedTrajs();
         setupMiningSpaceChoiceBox();
 
@@ -240,6 +303,8 @@ public class RoIViewController {
         //make the grid
         if(!selectedTrajs.isEmpty()){
 
+            feedbackLabel.setText("Making grid...");
+
             ThreadFactory factory = r -> new Thread(r, "Making Grid");
             final ExecutorService service = Executors.newSingleThreadExecutor(factory);
 
@@ -250,6 +315,7 @@ public class RoIViewController {
             CompletableFuture.runAsync(this::makeGridImpl, service).handle((aVoid, throwable) -> {
                 service.shutdown();
                 Platform.runLater(()->{
+                    feedbackLabel.setText("Grid made, can now used it for RoI mining.");
                     progressBar.setProgress(0);
                     progressBar.setDisable(true);
                 });
@@ -263,45 +329,143 @@ public class RoIViewController {
 
     }
 
+    private static final int maxMb = 10;
+    private final ThreadFactory factory = r -> new Thread(r, "Mining RoIs");
+    private final ExecutorService service = Executors.newSingleThreadExecutor(factory);
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
+
+
+    private void onCancel(){
+
+        isRunning.set(false);
+
+        //stop all the algos
+        for (SPMAlgorithm algorithm : spmAlgoChoiceBox.getItems()) {
+            algorithm.stop();
+        }
+
+        roisPane.setDisable(false);
+        progressBar.setProgress(0);
+        mineRoIsBtn.setText("Mine RoIs");
+        //reset ui
+        setupMiningState(!selectedTrajs.isEmpty(), !miningSpaceChoiceBox.getItems().isEmpty());
+
+        feedbackLabel.setText("Cancelled mining.");
+
+    }
+
     @FXML
     public void onMineRoIsClicked(ActionEvent actionEvent) {
 
-        AbstractRoIMining algo = roiAlgorithmChoiceBox.getValue();
+        if(isRunning.get()){
+            //clicking this button again cancels the mining
+            onCancel();
 
-        //set progress reporter
-        algo.setProgressReporter(progress -> Platform.runLater(()->{
-            progressBar.setProgress(progress);
-        }));
+        }
+        //start mining
+        else{
+            isRunning.set(true);
+            feedbackLabel.setText("Mining RoIs...");
 
-        //setup progress bar
-        progressBar.setDisable(false);
-        progressBar.setProgress(0);
+            //setup progress bar
+            progressBar.setDisable(false);
+            progressBar.setProgress(0);
 
-        minimumDensitySpinner.setDisable(true);
-        cellSizeSpinner.setDisable(true);
-        mineRoIsBtn.setDisable(true);
+            AbstractRoIMining algo = roiAlgorithmChoiceBox.getValue();
 
-        ThreadFactory factory = r -> new Thread(r, "Mining RoIs");
-        final ExecutorService service = Executors.newSingleThreadExecutor(factory);
+            //set progress reporter
+            algo.setProgressReporter(progress -> Platform.runLater(()->{
+                progressBar.setProgress(progress);
+            }));
 
-        CompletableFuture.runAsync(this::mineRoIsImpl, service).handle((aVoid, throwable) -> {
-            //error
-            if(throwable != null){
-                throwable.printStackTrace();
-                //reset ui
-                Platform.runLater(()-> setupMiningState(!selectedTrajs.isEmpty(), !miningSpaceChoiceBox.getItems().isEmpty()));
+            //turn it into a cancel button
+            mineRoIsBtn.setText("Cancel");
+            roisPane.setDisable(true);
+            final boolean doMineSeqPatterns = mineSPMCheckbox.isSelected();
+            mineSPMCheckbox.setSelected(false);
+
+            final RoIMiningSpace space = miningSpaceChoiceBox.getValue().getModel();
+            final Map<String, ITrajectory> selectedTrajs = this.selectedTrajs;
+            final SPMAlgorithm spmAlgo = spmAlgoChoiceBox.getValue();
+            final AtomicBoolean keepRunningFileMonitor = new AtomicBoolean(false);
+
+            progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
+            feedbackLabel.setText("Mining sequences using: " + spmAlgo.getSimpleName());
+
+            Runnable miningRunnable = () -> {
+                try{
+
+                    //mine and store rois
+                    Collection<RoI> rois = mineRoIs(space);
+                    storeRois(rois, space);
+                    //mine and store sequential patterns
+                    if(doMineSeqPatterns){
+
+                        //do spm
+                        SPMParameters spmParams = setupSPMParams(spmAlgo, selectedTrajs, rois, space);
+                        Collection<SequentialPattern> patterns = spmAlgo.run(spmParams);
+
+                        storeSequentialPatterns(patterns, spmAlgo);
+                        patterns.clear();
+
+                    }
+                    rois.clear();
+
+                    //done mining
+                    if(isRunning.get()){
+                        Platform.runLater(()->{
+                            ((Stage)mineRoIsBtn.getScene().getWindow()).close();
+                            service.shutdown();
+                        });
+                    }
+
+
+                }catch (Exception e){
+                    e.printStackTrace();
+                    Platform.runLater(this::onCancel);
+                }
+                finally {
+                    keepRunningFileMonitor.set(false);
+                    //delete out file if it exists
+                    isRunning.set(false);
+                }
+
+            };
+
+            Thread runningTask = new Thread(miningRunnable, "Mining RoIs and Maybe SPM");
+            runningTask.start();
+
+        }
+
+    }
+
+    /**
+     * If file exceeds the specified size, run the onDelete runnable.
+     * @param file the file to monitor
+     * @param maxMegabytes the max size in mb
+     * @param isRunning if this monitor thread should keep running
+     * @param onFileSizeReached what to do when file size too large
+     */
+    private void monitorFileForTooLarge(File file, int maxMegabytes, AtomicBoolean isRunning, Runnable onFileSizeReached){
+        Thread task = new Thread(()->{
+            isRunning.set(true);
+            while(isRunning.get()){
+                if(file.exists()){
+                    double mb = file.length() / 1024.0 / 1024.0;
+                    if(mb > maxMegabytes){
+                        onFileSizeReached.run();
+                        isRunning.set(false);
+                        return;
+                    }
+                }
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
-            //worked fine
-            else{
-                Platform.runLater(()->{
-                    ((Stage)mineRoIsBtn.getScene().getWindow()).close();
-                });
-            }
-
-            service.shutdown();
-            return null;
-        });
-
+        }, "Monitor SPM file");
+        task.start();
     }
 
     private void makeGridImpl(){
@@ -319,10 +483,7 @@ public class RoIViewController {
         BaseTrajSuiteProgram.getInstance().getLayers().add("Grids", grid);
     }
 
-    private void mineRoIsImpl(){
-        if(selectedTrajs.isEmpty()){
-            return;
-        }
+    private void storeRois(Collection<RoI> rois, RoIMiningSpace space){
 
         AbstractGeographicProjection projection = null;
         for (ITrajectory traj : selectedTrajs.values()) {
@@ -332,20 +493,16 @@ public class RoIViewController {
             }
         }
 
-        RoIMiningSpace space = miningSpaceChoiceBox.getValue().getModel();
-        int cellDensity = minimumDensitySpinner.getValue();
-        AbstractRoIMining algo = roiAlgorithmChoiceBox.getValue();
-
-        Collection<RoI> rois = algo.run(space, cellDensity);
-
-
         //handle numeric RoIs
         if(projection == null){
             AddEntitiesTransaction transaction = new AddEntitiesTransaction();
             for (RoI roi : rois) {
                 transaction.add("RoIs_" + IdGenerator.nextId(), String.valueOf(roi.getId()), roi);
             }
-            BaseTrajSuiteProgram.getInstance().getLayers().process(transaction);
+            ServiceLoader<TransactionProcessor> services = ServiceLoader.load(TransactionProcessor.class);
+            for (TransactionProcessor transactionProcessor : services) {
+                transactionProcessor.process(transaction);
+            }
         }
         //handle geographic rois
         else{
@@ -388,9 +545,59 @@ public class RoIViewController {
                     transaction.add(layername, roiId, rectangularRoI, graphic);
                 }
 
-                BaseTrajSuiteProgram.getInstance().getLayers().process(transaction);
+                ServiceLoader<TransactionProcessor> services = ServiceLoader.load(TransactionProcessor.class);
+                for (TransactionProcessor transactionProcessor : services) {
+                    transactionProcessor.process(transaction);
+                }
             }
         }
+    }
+
+    private SPMParameters setupSPMParams(SPMAlgorithm spmAlgo, Map<String, ITrajectory> selectedTrajs, Collection<RoI> rois, RoIMiningSpace space){
+
+        int[][] seqDb = new int[selectedTrajs.size()][];
+
+        int i = 0;
+        for (Map.Entry<String, ITrajectory> entry : selectedTrajs.entrySet()) {
+            int[] sequence = TrajectoryRoIUtil.fromTrajToRoISequence(entry.getValue(), rois, (RoIGrid) space);
+            seqDb[i] = sequence;
+            i++;
+        }
+
+        int minSup = minsupSpinner.getValue();
+        int otherParam = spmParamSpinner == null ? 1 : spmParamSpinner.getValue();
+
+        SPMParameters params = new SPMParameters(seqDb, minSup);
+        if(spmAlgo instanceof DCSpan){
+            params.setMaxRedund(otherParam / 100.0d);
+        }
+
+        return params;
+    }
+
+    private Collection<RoI> mineRoIs(RoIMiningSpace miningSpace){
+        int cellDensity = minimumDensitySpinner.getValue();
+        AbstractRoIMining algo = roiAlgorithmChoiceBox.getValue();
+        return algo.run(miningSpace, cellDensity);
+    }
+
+    private void storeSequentialPatterns(Collection<SequentialPattern> patterns, SPMAlgorithm algorithm){
+
+        AddEntitiesTransaction transaction = new AddEntitiesTransaction();
+
+        String layername = "Sequential Patterns - " + algorithm.getSimpleName();
+
+        //todo: will have to invent some geographical sequence object
+
+        for (SequentialPattern pattern : patterns) {
+            transaction.add(layername, IdGenerator.nextId(), pattern);
+        }
+
+        ServiceLoader<TransactionProcessor> services = ServiceLoader.load(TransactionProcessor.class);
+        for (TransactionProcessor transactionProcessor : services) {
+            transactionProcessor.process(transaction);
+        }
+
     }
 
 }

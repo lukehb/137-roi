@@ -1,11 +1,14 @@
 import onethreeseven.roi.view.RoIMenuSupplier;
 import onethreeseven.trajsuitePlugin.model.EntitySupplier;
+import onethreeseven.trajsuitePlugin.model.TransactionProcessor;
 
 module onethreeseven.roi{
     requires onethreeseven.datastructures;
     requires onethreeseven.common;
     requires onethreeseven.collections;
+    requires onethreeseven.spm;
     requires java.desktop;
+    requires net.tascalate.concurrent.lib;
 
     exports onethreeseven.roi.model;
     exports onethreeseven.roi.graphics;
@@ -24,5 +27,6 @@ module onethreeseven.roi{
 
     //for getting entities
     uses EntitySupplier;
+    uses TransactionProcessor;
 
 }

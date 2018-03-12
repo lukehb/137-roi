@@ -19,12 +19,20 @@ allprojects {
 }
 
 repositories {
-    maven{url 'https://dl.bintray.com/lukehb/137-geo'} //geography module hosted on bintray
+    maven { url 'https://github.com/lukehb/137-jars/raw/master/repository' } //spmf
+    //maven{url 'https://dl.bintray.com/lukehb/137-geo'} //geography module hosted on bintray
     mavenCentral()
     mavenLocal()
 }
 
 dependencies {
+
+    //for cancellable tasks
+    compile group: 'net.tascalate.concurrent', name: 'net.tascalate.concurrent.lib', version: '0.5.4'
+
+    //spm
+    compile group: 'onethreeseven', name: 'spm', version: '0.0.1-SNAPSHOT'
+
     //jcli
     compile group: 'onethreeseven', name: 'jclimod', version: '0.0.1-SNAPSHOT'
 
