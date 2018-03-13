@@ -1,7 +1,9 @@
 package onethreeseven.roi.model;
 
+import onethreeseven.common.util.Maths;
 import onethreeseven.common.util.NDUtil;
 import onethreeseven.roi.algorithm.AbstractRoIMining;
+import onethreeseven.trajsuitePlugin.model.BoundingCoordinates;
 import onethreeseven.trajsuitePlugin.util.BoundsUtil;
 
 import java.util.*;
@@ -168,6 +170,29 @@ public class RoIGrid extends Grid implements RoIMiningSpace {
             denseRoI.add(cell);
         }
         return denseRoI;
+    }
+
+
+    /**
+     * Get the centroid coordinate from an roi using its cells (assuming the roi is from this grid).
+     * @param roi The roi the get the centroid coordinates of.
+     * @return The centroid coordinates of the RoI.
+     */
+    public double[] getCentroid(RoI roi){
+
+        int nRois = roi.size();
+        double[][] allCentroids = new double[nRois][2];
+
+        int i = 0;
+        for (Integer cellId : roi.getCells()) {
+            BoundingCoordinates cellBounds = this.getCellBounds(cellId);
+            if(cellBounds != null){
+                allCentroids[i] = BoundsUtil.getCenter(cellBounds.getBounds());
+            }
+            i++;
+        }
+
+        return Maths.medoid(allCentroids);
     }
 
     @Override

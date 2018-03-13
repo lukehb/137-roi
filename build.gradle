@@ -27,9 +27,6 @@ repositories {
 
 dependencies {
 
-    //for cancellable tasks
-    compile group: 'net.tascalate.concurrent', name: 'net.tascalate.concurrent.lib', version: '0.5.4'
-
     //spm
     compile group: 'onethreeseven', name: 'spm', version: '0.0.1-SNAPSHOT'
 

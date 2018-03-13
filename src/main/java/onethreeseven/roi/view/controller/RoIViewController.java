@@ -8,18 +8,21 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.*;
+import javafx.scene.control.Label;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
-import onethreeseven.common.util.FileUtil;
+import onethreeseven.common.util.ColorUtil;
+import onethreeseven.datastructures.graphics.TrajectoryGraphic;
 import onethreeseven.datastructures.model.ITrajectory;
+import onethreeseven.datastructures.model.SpatialTrajectory;
 import onethreeseven.datastructures.model.SpatioCompositeTrajectory;
 import onethreeseven.geo.projection.AbstractGeographicProjection;
 import onethreeseven.roi.algorithm.*;
 import onethreeseven.roi.graphics.RoIGraphic;
 import onethreeseven.roi.model.*;
 import onethreeseven.spm.algorithm.*;
-import onethreeseven.spm.data.SPMFParser;
 import onethreeseven.spm.model.SequentialPattern;
 import onethreeseven.trajsuitePlugin.graphics.LabelPrefab;
 import onethreeseven.trajsuitePlugin.model.BaseTrajSuiteProgram;
@@ -30,14 +33,17 @@ import onethreeseven.trajsuitePlugin.transaction.AddEntitiesTransaction;
 import onethreeseven.trajsuitePlugin.transaction.RemoveEntitiesTransaction;
 import onethreeseven.trajsuitePlugin.util.BoundsUtil;
 import onethreeseven.trajsuitePlugin.util.IdGenerator;
+
+import java.awt.*;
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -386,6 +392,7 @@ public class RoIViewController {
 
             final RoIMiningSpace space = miningSpaceChoiceBox.getValue().getModel();
             final Map<String, ITrajectory> selectedTrajs = this.selectedTrajs;
+            final AbstractGeographicProjection projection = getProjection(selectedTrajs.values());
             final SPMAlgorithm spmAlgo = spmAlgoChoiceBox.getValue();
             final AtomicBoolean keepRunningFileMonitor = new AtomicBoolean(false);
 
@@ -405,7 +412,7 @@ public class RoIViewController {
                         SPMParameters spmParams = setupSPMParams(spmAlgo, selectedTrajs, rois, space);
                         Collection<SequentialPattern> patterns = spmAlgo.run(spmParams);
 
-                        storeSequentialPatterns(patterns, spmAlgo);
+                        storeSequentialPatterns(projection, patterns, rois, (RoIGrid) space, spmAlgo);
                         patterns.clear();
 
                     }
@@ -483,15 +490,21 @@ public class RoIViewController {
         BaseTrajSuiteProgram.getInstance().getLayers().add("Grids", grid);
     }
 
-    private void storeRois(Collection<RoI> rois, RoIMiningSpace space){
-
+    private AbstractGeographicProjection getProjection(Collection<ITrajectory> trajs){
         AbstractGeographicProjection projection = null;
-        for (ITrajectory traj : selectedTrajs.values()) {
+        for (ITrajectory traj : trajs) {
             if(traj instanceof SpatioCompositeTrajectory){
                 projection = ((SpatioCompositeTrajectory) traj).getProjection();
                 break;
+
             }
         }
+        return projection;
+    }
+
+    private void storeRois(Collection<RoI> rois, RoIMiningSpace space){
+
+        AbstractGeographicProjection projection = getProjection(selectedTrajs.values());
 
         //handle numeric RoIs
         if(projection == null){
@@ -581,16 +594,25 @@ public class RoIViewController {
         return algo.run(miningSpace, cellDensity);
     }
 
-    private void storeSequentialPatterns(Collection<SequentialPattern> patterns, SPMAlgorithm algorithm){
+    private void storeSequentialPatterns(AbstractGeographicProjection projection, Collection<SequentialPattern> patterns, Collection<RoI> rois, RoIGrid grid, SPMAlgorithm algorithm){
+
+        Map<String, SpatialTrajectory> patternTrajs = TrajectoryRoIUtil.fromPatternsToTrajs(projection, patterns, rois, grid);
 
         AddEntitiesTransaction transaction = new AddEntitiesTransaction();
 
-        String layername = "Sequential Patterns - " + algorithm.getSimpleName();
+        String layername = "Geographical Sequential Patterns - " + algorithm.getSimpleName();
 
-        //todo: will have to invent some geographical sequence object
+        Color[] colors = ColorUtil.generateNColors(patternTrajs.size());
 
-        for (SequentialPattern pattern : patterns) {
-            transaction.add(layername, IdGenerator.nextId(), pattern);
+        //add pattern trajectories to transaction
+        int i = 0;
+        for (Map.Entry<String, SpatialTrajectory> entry : patternTrajs.entrySet()) {
+            String entityId = entry.getKey();
+            SpatialTrajectory traj = entry.getValue();
+            TrajectoryGraphic graphic = new TrajectoryGraphic(traj);
+            graphic.fallbackColor.setValue(colors[i]);
+            transaction.add(layername, entityId, traj, graphic);
+            i++;
         }
 
         ServiceLoader<TransactionProcessor> services = ServiceLoader.load(TransactionProcessor.class);

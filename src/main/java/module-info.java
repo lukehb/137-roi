@@ -8,7 +8,6 @@ module onethreeseven.roi{
     requires onethreeseven.collections;
     requires onethreeseven.spm;
     requires java.desktop;
-    requires net.tascalate.concurrent.lib;
 
     exports onethreeseven.roi.model;
     exports onethreeseven.roi.graphics;
