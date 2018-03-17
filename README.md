@@ -1,2 +1,2 @@
 # 137-roi
-A library of trajectory region of interest mining algorithms
+A module for [TrajSuite](https://github.com/lukehb/TrajSuite). A library of trajectory region of interest mining algorithms
