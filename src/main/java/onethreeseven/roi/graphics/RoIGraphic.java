@@ -50,7 +50,7 @@ public class RoIGraphic extends GraphicsPayload {
             double[][] bounds3d = new double[][]{
                     new double[]{bounds[0][0], bounds[0][1]},
                     new double[]{bounds[1][0], bounds[1][1]},
-                    new double[]{0, PluginSettings.smallElevation.getSetting()}
+                    new double[]{0, PluginSettings.smallElevation.getSetting() + 100}
             };
             corners = BoundsUtil.getCorners(bounds3d);
         }else{
